@@ -1,65 +1,86 @@
-# Frappe Deployment on Ec2 with mariadb RDS (3-tier Arch)
+# Frappe Deployment on EC2 with MariaDB RDS (3-tier Architecture)
 
-Prerequisites:
-1> create custom Vpc with 2 public and private Subnets.(use vpc and more option which will create rt, igw, nat, endpoint, etc)
-2> Create Rds in private Subnet.
-  Info- mariadb engine 10.11, 2 AZ, Choose Created VPC and private Subnet, Publically accessible=false, etc.
-5> Create a Load Balancer with http:80 and https:443 listener, if you have the domain and SSL Certificate use 443 Listener, If you don't have the Domain use 80 Listener.Create a tg when creating alb with http:8000 and select the target with 80 in pending then click create.
-4> Create an EC2 instance with ubuntu 22 ami( reason= running ssm-agent) or create 2 instances 1 in private and 1 in public to help you jump on private machine ), choose create vpc and one of the private subnet and select the default Sg, select minimum t3.medium type of instance and click create.
-5> Here are some screen shoots that will help with sg inbounds rules,
-This is the inbound rules of sg used for alb 
-![{0C3A9908-BBB9-4C78-8436-FA6699C65258}](https://github.com/user-attachments/assets/a19975bd-aaad-4f59-a1ae-e5d5e631803c)
+## Prerequisites
 
-This is the inbound rules of sg used for EC2 
-![{19FD2365-79FD-4DE5-8250-67EFBC52A3A7}](https://github.com/user-attachments/assets/2684bb90-d115-4ab9-818f-6574aea13e58)
+1. **Create a Custom VPC**:
+   - Include 2 public and 2 private subnets.
+   - Use the VPC wizard to create route tables, Internet Gateway (IGW), NAT Gateway, endpoints, etc.
 
-The Target Group looks something like this 
-![{EFFD8DFD-D8E4-4202-9669-6FFEAD9DFE2E}](https://github.com/user-attachments/assets/eb4dafdb-8bc7-4ff4-8552-fd562b1f01c5)
+2. **Create an RDS Instance in a Private Subnet**:
+   - Engine: MariaDB 10.11
+   - Availability Zones: 2
+   - Choose the created VPC and private subnets.
+   - Set `Publicly Accessible` to `false`.
 
-This is how the LB listener looks like
-![{08FBA1C6-0A42-4211-A89A-A67AD7FE1FF3}](https://github.com/user-attachments/assets/efc6d605-b15f-4519-9e3d-d1f0e37ca140)
+3. **Create a Load Balancer**:
+   - Use HTTP:80 and HTTPS:443 listeners.
+   - If you have a domain and SSL certificate, use the 443 listener.
+   - If you don't have a domain, use the 80 listener.
+   - Create a target group (TG) during the ALB setup with HTTP:8000 and select the target with 80 in pending state, then click create.
 
-6> Now login to private machine and execute Below commands.
+4. **Create an EC2 Instance**:
+   - OS: Ubuntu 22 AMI (reason: running `ssm-agent`).
+   - Optionally create two instances: one in a private subnet and one in a public subnet for jump access.
+   - Choose the created VPC and one of the private subnets.
+   - Use the default Security Group (SG).
+   - Instance Type: Minimum `t3.medium`.
 
-  
+5. **Configure Security Groups**:
+   - Inbound rules for ALB SG:
+     ![ALB Security Group Inbound Rules](https://github.com/user-attachments/assets/a19975bd-aaad-4f59-a1ae-e5d5e631803c)
 
-ubuntu@ip-10-23-44-118:~/frappe-bench$ history
-    1  sudo su -
-    2  sudo apt-get update
-    3  python3 --version
-    4  sudo apt install git python3-dev python3-pip redis-server
-    5  sudo apt install software-properties-common
-    6  sudo apt-get install mariadb-client-10.6
-    7  sudo curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
-    8  export NVM_DIR="$HOME/.nvm"
-    9  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-   10  nvm install 18
-   11  node -v
-   12  npm install -g yarn
-   13  sudo apt-get install xvfb libfontconfig wkhtmltopdf
-   14  sudo pip3 install frappe-bench
-   15  bench --version
-   16  sudo apt install python3.10-venv
-   17  bench init frappe-bench --frappe-branch version-15
-   18  cd frappe-bench/
-   19  ls
-   20  ssh-keygen
-   21  bench get-app erpnext https://github.com/frappe/erpnext --branch version-15 --resolve-deps
-   22  bench config restart_supervisor_on_update on
-   23  sudo bench setup production ubuntu
-   24  bench new-site prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com --db-host=prod-frappe-mariadb.cu4mn4dld2td.ap-south-1.rds.amazonaws.com --db-port=3306 --db-username=root
-   25  bench new-site prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com --db-host=prod-frappe-mariadb.cu4mn4dld2td.ap-south-1.rds.amazonaws.com --db-port=3306 --db-root-username=root
-   26  bench --site prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com install-app erpnext
-   27  bench --site prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com list-apps
-   28  bench setup nginx
-   29  sudo service nginx reload
-   30  bench setup add-domain prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com
-   31  lsof -i :8000
-   32  bench build
-   33  chmod o+rx /home/ubuntu/
+   - Inbound rules for EC2 SG:
+     ![EC2 Security Group Inbound Rules](https://github.com/user-attachments/assets/2684bb90-d115-4ab9-818f-6574aea13e58)
 
+   - Target Group configuration:
+     ![Target Group Configuration](https://github.com/user-attachments/assets/eb4dafdb-8bc7-4ff4-8552-fd562b1f01c5)
 
-* The content in command like prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com is alb dns, You must use the alb dns if you want you site to be accessible from any browser. The site_name, alb dns and added-domain should be exactly same.
+   - Load Balancer listener configuration:
+     ![Load Balancer Listener](https://github.com/user-attachments/assets/efc6d605-b15f-4519-9e3d-d1f0e37ca140)
 
-* This ubuntu user is firstly add to sudo group, use command 'usermod -aG sudo ubuntu'
-* Addition Config are done in creating tg 
+## Deployment Steps
+
+1. **Login to the Private Machine and Execute the Following Commands**:
+
+   ```bash
+   sudo su -
+   sudo apt-get update
+   python3 --version
+   sudo apt install git python3-dev python3-pip redis-server
+   sudo apt install software-properties-common
+   sudo apt-get install mariadb-client-10.6
+   sudo curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+   export NVM_DIR="$HOME/.nvm"
+   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+   nvm install 18
+   node -v
+   npm install -g yarn
+   sudo apt-get install xvfb libfontconfig wkhtmltopdf
+   sudo pip3 install frappe-bench
+   bench --version
+   sudo apt install python3.10-venv
+   bench init frappe-bench --frappe-branch version-15
+   cd frappe-bench/
+   ssh-keygen
+   bench get-app erpnext https://github.com/frappe/erpnext --branch version-15 --resolve-deps
+   bench config restart_supervisor_on_update on
+   sudo bench setup production ubuntu
+   bench new-site prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com --db-host=prod-frappe-mariadb.cu4mn4dld2td.ap-south-1.rds.amazonaws.com --db-port=3306 --db-username=root
+   bench --site prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com install-app erpnext
+   bench --site prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com list-apps
+   bench setup nginx
+   sudo service nginx reload
+   bench setup add-domain prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com
+   lsof -i :8000
+   bench build
+   chmod o+rx /home/ubuntu/
+   ```
+The content in command like prod-frappe-alb-1920024901.ap-south-1.elb.amazonaws.com is alb dns, You must use the alb dns if you want you site to be accessible from any browser. The site_name, alb dns and added-domain should be exactly same.
+
+This ubuntu user is firstly add to sudo group, use command 'usermod -aG sudo ubuntu'
+
+Addition Config are done in creating tg
+
+Frappe Accessible using ALB
+![{425755CE-EE1F-49ED-886F-B34AF60F63A9}](https://github.com/user-attachments/assets/385b65c5-f468-4c60-9148-bd660d3dbbcd)
+
